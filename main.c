@@ -173,8 +173,8 @@ int main(void)
 
 		  HAL_Delay(100*(10-ID));
 	  }
-	  HAL_Delay(1000)
-	  if (STMID[4] == "0") {
+	  HAL_Delay(1000);
+	  if (&STMID[4] == "0") {
 		char recievebuf[8];
 		HAL_UART_Receive(
 			&huart1,
