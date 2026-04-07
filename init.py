@@ -3,6 +3,7 @@ import serial.tools.list_ports
 import sys # Remove later
 import time
 
+# Hello !
 
 # https://pythonhosted.org/pyserial/tools.html#serial.tools.list_ports.ListPortInfo
 def find_port():
