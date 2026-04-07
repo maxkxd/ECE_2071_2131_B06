@@ -3,7 +3,7 @@ import serial.tools.list_ports
 import sys # Remove later
 import time
 
-# Hello !
+# 
 
 # https://pythonhosted.org/pyserial/tools.html#serial.tools.list_ports.ListPortInfo
 def find_port():
@@ -116,7 +116,7 @@ message = str(input("Please enter a message: "))
 port = find_port()
 ser = init_port(port)
 
-cmd = "a0"+message="\r\n"
+cmd = "a0\r\n"
 
 
 UART2_write(ser, cmd)
@@ -126,5 +126,6 @@ response = UART2_read(ser, 6)
 
 print(response)
 
+#message="\r\n"
 
 ser.close()
