@@ -12,10 +12,13 @@ int checksum (char str[]) {
 
 int main () {
     char test[100] = "hello"; // sets an arbitrary test string
+
+    //abitrary testing
     printf("%d\n",test[0]^test[1]);
     printf("%d\n",(test[0]^test[1])^test[2]);
     printf("%d\n",((test[0]^test[1])^test[2])^test[3]);
     printf("%d\n",(((test[0]^test[1])^test[2])^test[3])^test[4]);
+
     int temp = checksum(test); // stores the return of the checksum into temp
     char buffer[50]; // initialise buffer
     sprintf(buffer, "%d", temp); // stores the integer as a string to buffer
