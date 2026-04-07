@@ -50,7 +50,7 @@ static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN 0 */
 #define ID_LEN 6
 #define INIT_BUF_LEN 10
-void init_network(char STMID[])
+void init_network(char *STMID)
 {
 	char headBuf[10] = "n\0"; // random character - no meaning
 	char buf[10] = "n\0";
@@ -91,7 +91,7 @@ void init_network(char STMID[])
 		{
 			initialised = true;
 			// increment ID
-			int Id = atoi(buf[1]) + 1;
+			int Id = atoi(&buf[1]) + 1;
 			char chId[2];
 			sprintf(chId, "%d", Id);
 			// assign Id
