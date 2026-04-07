@@ -173,6 +173,22 @@ int main(void)
 
 		  HAL_Delay(100*(10-ID));
 	  }
+	  HAL_Delay(1000)
+	  if (STMID[4] == "0") {
+		char recievebuf[8];
+		HAL_UART_Receive(
+			&huart1,
+			(uint8_t*)recievebuf,
+			INIT_BUF_LEN,
+			50
+		)
+		HAL_UART_Transmit(
+				&huart2,
+				(uint8_t*)recievebuf,
+				INIT_BUF_LEN,
+				50
+		  )
+	  }
    /* USER CODE END WHILE */
    /* USER CODE BEGIN 3 */
  }
