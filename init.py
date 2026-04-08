@@ -118,7 +118,6 @@ ser = init_port(port)
 
 cmd = "a0\r\n"
 
-
 UART2_write(ser, cmd)
 time.sleep(1)
 response = UART2_read(ser, 6)
