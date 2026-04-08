@@ -11,19 +11,45 @@ int checksum (char str[]) {
 }
 
 int main () {
-    char test[100] = "hello"; // sets an arbitrary test string
+    int check; // this variable should be replaced by the checksum sent by previous STM
 
-    //abitrary testing
-    printf("%d\n",test[0]^test[1]);
-    printf("%d\n",(test[0]^test[1])^test[2]);
-    printf("%d\n",((test[0]^test[1])^test[2])^test[3]);
-    printf("%d\n",(((test[0]^test[1])^test[2])^test[3])^test[4]);
+    char input[100] = "hello"; // arbitrary string for testing (replace with message)
 
-    int temp = checksum(test); // stores the return of the checksum into temp
     char buffer[50]; // initialise buffer
-    sprintf(buffer, "%d", temp); // stores the integer as a string to buffer
-    strcat(test, buffer); // concatenates buffer to the end of test string
-    printf("%s\n",test); // prints the resulting test string
+
+    // extract previous checksum from message to check, then delete it from the input
+    
+        for (int i = 0; i < strlen(input); i++) {
+            // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
+            if (strstr(&input[i], B06_2) == &input[i]) {
+                check = &input[i+5]; 
+                for (int j = i+5; j < strlen(check); j++)
+                term[j] = term[j+strlen(check)];
+            }
+        }
+
+    // perform checksum on message receieved
+    int input_check = checksum(input);
+
+    // compare with checksum received
+
+    // if checksum doesn't match, turn light on and terminate code with return
+    if (input_check != check) {
+        HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+        return 1;
+    // if checksum matches concatenate message and get new checksum
+    } else {
+        strcat(input, STM_ID);
+        sprintf(buffer, "%d", checksum(input)); //converts checksum to string
+        strcat(input, buffer);
+    }
+    // Add code to send message
 
     return 0;
 }
+
+// testing
+    // printf("%d\n",test[0]^test[1]);
+    // printf("%d\n",(test[0]^test[1])^test[2]);
+    // printf("%d\n",((test[0]^test[1])^test[2])^test[3]);
+    // printf("%d\n",(((test[0]^test[1])^test[2])^test[3])^test[4]);

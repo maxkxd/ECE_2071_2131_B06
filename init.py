@@ -125,6 +125,13 @@ response = UART2_read(ser, 6)
 
 print(response)
 
+# reading message from head after loop
+time.sleep(1)
+
+reading = UART2_read(ser, 3)
+
+print(reading)
+
 #message="\r\n"
 
 ser.close()
