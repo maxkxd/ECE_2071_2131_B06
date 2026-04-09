@@ -33,6 +33,27 @@ int extract_char (char input[]) {
     return check;
 }
 
+// the below function has not been tested yet
+int extract_bytes (uint8_t input[]) {
+
+    int check;
+    char stringcheck[5];
+
+    for (int i = strlen(input); i >= 0 ; i--) {
+            // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
+            if (strstr((char *)&input[i], "_") == (char *)&input[i]) {
+                strcpy(stringcheck, &input[i+2]);
+                check = atoi(&input[i+2]); 
+                printf("check in loop %d\n", check);
+                printf("stringcheck length: %ld\n", strlen(stringcheck));
+                for (int j = i+2; j < i+2+strlen(stringcheck); j++)
+                input[j] = input[j+strlen(stringcheck)];
+                break;
+            }
+        }
+        return check;
+}
+
 int main () {
     int check; // this variable should be replaced by the checksum sent by previous STM
 
