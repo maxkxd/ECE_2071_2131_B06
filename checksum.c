@@ -25,7 +25,7 @@ int main () {
         for (int i = strlen(input); i >= 0 ; i--) {
             // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
             if (strstr(&input[i], "_") == &input[i]) {
-                strcpy(stringcheck, &input[i+2])
+                strcpy(stringcheck, &input[i+2]);
                 check = atoi(&input[i+2]); 
                 for (int j = i+2; j < strlen(stringcheck); j++)
                 input[j] = input[j+strlen(stringcheck)];
