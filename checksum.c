@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 // this function gets the checksum output as an integer
 int checksum (char str[]) {
@@ -10,38 +11,25 @@ int checksum (char str[]) {
     return temp;
 }
 
-void extract (char check[]) {
-    for (int j = i+5; j < strlen(check); j++)
-    input[j] = input[j+strlen(check)];
-}
-
 int main () {
     int check; // this variable should be replaced by the checksum sent by previous STM
 
-    char input[100] = "hello"; // arbitrary string for testing (replace with message)
+    char stringcheck[6];
+
+    char input[100] = "helloB06_2"; // arbitrary string for testing (replace with message)
 
     char buffer[50]; // initialise buffer
 
     // extract previous checksum from message to check, then delete it from the input
     
-        for (int i = strlen(input); i > 0 ; i--) {
+        for (int i = strlen(input); i >= 0 ; i--) {
             // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
-            if (strstr(&input[i], "B06_3") == &input[i]) {
-                check = &input[i+5]; 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
-            } else if (strstr(&input[i], "B06_2") == &input[i]) {
-                check = &input[i+5]; 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
-            } else if (strstr(&input[i], "B06_1") == &input[i]) {
-                check = &input[i+5]; 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
-            } else if (strstr(&input[i], "B06_0") == &input[i]) {
-                check = &input[i+5]; 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
+            if (strstr(&input[i], "_") == &input[i]) {
+                strcpy(stringcheck, &input[i+2]);
+                check = atoi(&input[i+2]); 
+                for (int j = i+2; j < i+2+strlen(stringcheck); j++)
+                input[j] = input[j+strlen(stringcheck)];
+                break;
             }
         }
 
@@ -64,9 +52,3 @@ int main () {
 
     return 0;
 }
-
-// testing
-    // printf("%d\n",test[0]^test[1]);
-    // printf("%d\n",(test[0]^test[1])^test[2]);
-    // printf("%d\n",((test[0]^test[1])^test[2])^test[3]);
-    // printf("%d\n",(((test[0]^test[1])^test[2])^test[3])^test[4]);
