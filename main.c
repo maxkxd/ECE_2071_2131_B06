@@ -73,6 +73,7 @@ typedef enum {
 uint8_t buf_head[1];
 uint8_t buf_tail[1];
 static volatile uint8_t roleNum;
+static volatile uint8_t ctr;
 
 // using an interrupt to receive initial msg from huart2
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -149,24 +150,18 @@ void init_network(char *STMID, uint8_t *Id)
 		}
 	}
 }
-//
-//void network_idle(char *buff)
-//{
-//
-//	bool idle = true;
-//
-//	// while waiting for commands, listening through UART2
-//	while (idle)
-//	{
-//		// receiving arbitrary byte for now - ignore
-//		HAL_UART_Receive(
-//				&huart2,
-//				(uint8_t *)buff,
-//				1,
-//				HAL_MAX_DELAY
-//		);
-//	}
-//}
+
+void listen()
+{
+	int pos = 0;
+	uint8_t *msg = (uint8_t *)malloc(1);
+	msg[0] = head_buf[0];
+	while (head_buf[0] != 0x0A)
+	{
+		pos++;
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -203,6 +198,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   // arbitrary
   roleNum = 0;
+  ctr = 0;
   HAL_Delay(1000);
   HAL_UART_Receive_IT(&huart1, buf_tail, 1);
   HAL_UART_Receive_IT(&huart2, buf_head, 1);
@@ -216,35 +212,21 @@ int main(void)
   Id[0] = 0;
 
   init_network(STMID, Id);
+  
+  buf_head[0] = 0;
+  buf_tail[0] = 0;
 
   while (1)
   {
-	  if (Id[0] == 0)
+	  if (Id == 0)
 	  {
-			HAL_GPIO_WritePin(
-				LD3_GPIO_Port,
-				LD3_Pin,
-				1);
-	  }
-	  else
-	  {
-		  for (int i = 0; i < Id[0]; i++)
+		  if (buf_head != 0)
 		  {
-		        HAL_GPIO_WritePin(
-		            LD3_GPIO_Port,
-		            LD3_Pin,
-		            1);
-				HAL_Delay(100);
-		        HAL_GPIO_WritePin(
-		            LD3_GPIO_Port,
-		            LD3_Pin,
-		            0);
-		        HAL_Delay(100);
+			  listen();
+			  HAL_Delay(100);
+			  transmit();
 		  }
 	  }
-
-	  HAL_Delay(1000);
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
