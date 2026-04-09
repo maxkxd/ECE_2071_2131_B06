@@ -47,7 +47,7 @@ def init_port(port):
             port,
             115200,
             timeout=5,
-            write_timeout=5
+            write_timeout=2
 
 
             #dsrdtr=False # claude
@@ -81,8 +81,7 @@ def UART2_write(ser, data):
     for byte in writeData:
         try:
             ser.write(bytes([byte]))
-            bytesWritten += 1
-            time.sleep(0.01) #allowing time to for STM32 to receive byte
+            bytesWritten += 1 #allowing time to for STM32 to receive byte
 
 
         except serial.SerialTimeoutException:
@@ -96,20 +95,22 @@ def UART2_write(ser, data):
 
 def UART2_read(ser, byteCount):
     """Default UART to read from STM 
-
-
     Args:
         ser (port): Initialised port for serial communication
         byteCount (int): Number of bytes of return data
-
-
     Returns:
         string: the decoded returned data
     """
-    data = ser.read(byteCount)  
+    chars = []
 
-
-    return data.decode()
+    for i in range(byteCount):
+        b = ser.read(1)
+        if len(b) != 1:
+            raise TimeoutError(
+                "ERROR: TIMED OUT"
+            )
+        chars.append(b.decode("utf-8"))
+    return "".join(chars)
 
 
 # polling serial devices
@@ -117,7 +118,7 @@ def UART2_read(ser, byteCount):
 port = find_port()
 ser = init_port(port)
 
-cmd = input("Please enter a message: ")+"\r\n"
+cmd = "a"
 
 UART2_write(ser, cmd)
 #time.sleep(1)
@@ -134,5 +135,14 @@ UART2_write(ser, cmd)
 #print(reading)
 
 #message="\r\n"
+try:
+    while True:
+        msg = input("Please enter a message: ")+"\r\n"
+        UART2_write(ser, msg)
 
-ser.close()
+        reading = UART2_read(ser, len(msg))
+
+        print(reading)
+except KeyboardInterrupt:
+    print("Program finished.")
+    ser.close()
