@@ -55,7 +55,7 @@ def init_port(port):
 
 
         print("Port connected...")
-        time.sleep(3)
+        #time.sleep(3)
         return ser
    
     except serial.serialutil.SerialException:
@@ -112,25 +112,24 @@ def UART2_read(ser, byteCount):
 
 # polling serial devices
 
-message = str(input("Please enter a message: "))
 port = find_port()
 ser = init_port(port)
 
 cmd = "a0\r\n"
 
 UART2_write(ser, cmd)
-time.sleep(1)
-response = UART2_read(ser, 6)
+#time.sleep(1)
+#response = UART2_read(ser, 6)
 
 
-print(response)
+#print(response)
 
 # reading message from head after loop
-time.sleep(1)
+#time.sleep(1)
 
-reading = UART2_read(ser, 3)
+#reading = UART2_read(ser, 3)
 
-print(reading)
+#print(reading)
 
 #message="\r\n"
 
