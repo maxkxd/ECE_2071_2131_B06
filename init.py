@@ -74,17 +74,19 @@ def UART2_write(ser, data):
         data (string): string data to transmit
     """
 
+    bytesWritten = 0
+    writeData = data.encode("utf-8")
+    byteCount = len(writeData)
 
-    byteCount = len(data)
-    writeData = data.encode()
+    for byte in writeData:
+        try:
+            ser.write(bytes([byte]))
+            bytesWritten += 1
+            time.sleep(0.01) #allowing time to for STM32 to receive byte
 
 
-    try:
-        bytesWritten = ser.write(writeData)
-
-
-    except serial.SerialTimeoutException:
-        print("Error: Cannot write to STM")
+        except serial.SerialTimeoutException:
+            print("Error: Cannot write to STM")
    
     if byteCount != bytesWritten:
         print("Error: Incomplete write to STM")
@@ -115,7 +117,7 @@ def UART2_read(ser, byteCount):
 port = find_port()
 ser = init_port(port)
 
-cmd = "a0\r\n"
+cmd = input("Please enter a message: ")+"\n"
 
 UART2_write(ser, cmd)
 #time.sleep(1)
