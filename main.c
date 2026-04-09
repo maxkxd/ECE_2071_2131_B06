@@ -70,7 +70,7 @@ typedef enum {
 } Role;
 
 //https://stackoverflow.com/questions/77244063/hal-uart-receive-it-will-only-run-once
-uint8_t buf[1];
+static volatile uint8_t buf[1];
 static volatile uint8_t roleNum;
 static volatile uint8_t ctr;
 
@@ -80,6 +80,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (huart == &huart1 && roleNum == 0)
 	{
 		roleNum = 1;
+		HAL_UART_Receive_IT(&huart1, buf, 1);
+	}
+	else if (huart == &huart1 && roleNum == 1)
+	{
 		HAL_UART_Receive_IT(&huart1, buf, 1);
 	}
 	else if (huart == &huart2 && roleNum == 0)
@@ -92,7 +96,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		ctr++;
 		HAL_UART_Receive_IT(&huart1, buf, 1);
 	}
-	else
+	else if (huart == &huart2)
 	{
 		ctr++;
 		HAL_UART_Receive_IT(&huart2, buf, 1);
@@ -140,11 +144,11 @@ void init_network(char *STMID, uint8_t *Id)
 	}
 
 	bool IdFound = false;
-	uint8_t buf[1];
+	buf[0] = 0;
 
 	while (!IdFound)
 	{
-		if (HAL_UART_Receive(&huart1, buf, 1, HAL_MAX_DELAY) == HAL_OK)
+		if (buf[0] != 0)
 		{
 			IdFound = true;
 
@@ -160,13 +164,13 @@ void init_network(char *STMID, uint8_t *Id)
 	}
 }
 
-void listen(uint8_t *msg, int *bytes)
+void listen(uint8_t **msg, int *bytes)
 {
 	int temp = 0;
 	ctr = 0;
 
 	uint8_t *ptr = (uint8_t *)malloc(1);
-	ptr[ctr] = buf[ctr];
+	ptr[ctr] = buf[0];
 
 	while (buf[0] != 0x0A)
 	{
@@ -174,17 +178,24 @@ void listen(uint8_t *msg, int *bytes)
 		{
 			temp = ctr;
 			ptr = (uint8_t *)realloc(ptr, ctr+1);
-			ptr[ctr] = buf[ctr];
+			ptr[ctr] = buf[0];
 		}
 	}
 	*bytes = ctr + 1;
-	msg = ptr;
+	*msg = ptr;
+	ptr = NULL;
 }
 
 void transmit(uint8_t *msg, int bytes, bool toComp)
 {
+//	msg[0] = 'h';
+//	msg[1] = 'e';
+//	msg[2] = 'l';
+//	msg[3] = 'l';
+//	msg[4] = 'o';
 	for (int i = 0; i < bytes; i++)
 	{
+		HAL_Delay(100);
 		if (toComp)
 		{
 			HAL_UART_Transmit(&huart2, &msg[i], 1, HAL_MAX_DELAY);
@@ -193,7 +204,7 @@ void transmit(uint8_t *msg, int bytes, bool toComp)
 		{
 			HAL_UART_Transmit(&huart1, &msg[i], 1, HAL_MAX_DELAY);
 		}
-		HAL_Delay(10);
+		HAL_Delay(100);
 	}
 	// do something
 }
@@ -233,6 +244,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   // arbitrary
+  roleNum = 0;
   ctr = 0;
   HAL_Delay(1000);
   HAL_UART_Receive_IT(&huart1, buf, 1);
@@ -247,7 +259,7 @@ int main(void)
   Id[0] = 0;
 
   init_network(STMID, Id);
-
+  HAL_Delay(2000);
   buf[0] = 0;
 
   bool headTriggered = false;
@@ -258,39 +270,62 @@ int main(void)
 
   while (1)
   {
-	  if (buf[0] != 0 && Id[0] != 0)
+	  if (buf[0] != 0)
 	  {
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
-		  listen(msg, &bytes);
+		  listen(&msg, &bytes);
+
 		  //checksum(msg);
 		  // if not the checksum pause
 		  HAL_Delay(250);
 		  // add id
 		  // checksum -> without parity bit
 
-		  transmit(msg, bytes, false);
+		  transmit(msg, bytes, headTriggered);
 		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
-	  }
 
-	  if (buf[0] != 0 && Id[0] == 0 && !headTriggered)
-	  {
-		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
-		  headTriggered = true;
-		  listen(msg, &bytes);
-		  // add id
-		  // checksum
-		  // HAL_Delay
-		  transmit(msg, bytes, false);
-		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
-	  }
-	  if (buf[0] != 0 && headTriggered)
-	  {
-		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
-		  headTriggered = false;
-		  listen(msg, &bytes);
-		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
-		  transmit(msg, bytes, true);
-	  }
+		  buf[0] = 0;
+		  headTriggered = Id[0] == 0 && !headTriggered;
+	  } // dc
+//	  if (buf[0] != 0 && Id[0] != 0)
+//	  {
+//		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+//		  listen(&msg, &bytes);
+//		  //checksum(msg);
+//		  // if not the checksum pause
+//		  HAL_Delay(250);
+//		  // add id
+//		  // checksum -> without parity bit
+//
+//		  transmit(msg, bytes, false);
+//		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
+//
+//		  buf[0] = 0;
+//	  }
+
+//	  if (buf[0] != 0 && Id[0] == 0 && !headTriggered)
+//	  {
+		  //HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+//		  headTriggered = true;
+//		  listen(&msg, &bytes);
+//		  HAL_Delay(250);
+//		  // add id
+//		  // checksum
+//		  // HAL_Delay
+//		  transmit(msg, bytes, false);
+//		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
+//		  buf[0] = 0;
+//	  }
+//	  if (buf[0] != 0 && headTriggered)
+//	  {
+//		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+//		  headTriggered = false;
+//		  listen(&msg, &bytes);
+//		  HAL_Delay(250);
+//		  transmit(msg, bytes, true);
+//		  buf[0] = 0;
+//	  }
+//	  HAL_Delay(250);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
