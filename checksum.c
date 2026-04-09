@@ -21,27 +21,12 @@ int main () {
 
     // extract previous checksum from message to check, then delete it from the input
     
-        for (int i = strlen(input); i > 0 ; i--) {
+        for (int i = strlen(input); i >= 0 ; i--) {
             // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
-            if (strstr(&input[i], "B06_3") == &input[i]) {
-                strcpy(stringcheck, &input[i+5])
-                check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(stringcheck); j++)
-                input[j] = input[j+strlen(stringcheck)];
-            } else if (strstr(&input[i], "B06_2") == &input[i]) {
-                strcpy(stringcheck, &input[i+5])
-                check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(stringcheck); j++)
-                input[j] = input[j+strlen(stringcheck)];
-            } else if (strstr(&input[i], "B06_1") == &input[i]) {
-                strcpy(stringcheck, &input[i+5])
-                check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(stringcheck); j++)
-                input[j] = input[j+strlen(stringcheck)];
-            } else if (strstr(&input[i], "B06_0") == &input[i]) {
-                strcpy(stringcheck, &input[i+5])
-                check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(stringcheck); j++)
+            if (strstr(&input[i], "_") == &input[i]) {
+                strcpy(stringcheck, &input[i+2])
+                check = atoi(&input[i+2]); 
+                for (int j = i+2; j < strlen(stringcheck); j++)
                 input[j] = input[j+strlen(stringcheck)];
             }
         }
