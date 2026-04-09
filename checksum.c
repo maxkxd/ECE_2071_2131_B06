@@ -11,20 +11,25 @@ int checksum (char str[]) {
     return temp;
 }
 
+int extract (char input[])
+
 int main () {
     int check; // this variable should be replaced by the checksum sent by previous STM
 
     char stringcheck[6];
 
-    char input[100] = "helloB06_2"; // arbitrary string for testing (replace with message)
+    char input[100] = "helloB06_0B06_1B06_2B06_3"; // arbitrary string for testing (replace with message)
+    //cast input to bytes
 
+    
     char buffer[50]; // initialise buffer
 
     // extract previous checksum from message to check, then delete it from the input
     
         for (int i = strlen(input); i >= 0 ; i--) {
             // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
-            if (strstr(&input[i], "_") == &input[i]) {
+            // 0x5F is the byte for a "_"
+            if (strstr(&input[i], 0x5F) == &input[i]) {
                 strcpy(stringcheck, &input[i+2]);
                 check = atoi(&input[i+2]); 
                 for (int j = i+2; j < i+2+strlen(stringcheck); j++)
