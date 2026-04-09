@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 // this function gets the checksum output as an integer
 int checksum (char str[]) {
@@ -11,7 +12,26 @@ int checksum (char str[]) {
     return temp;
 }
 
-int extract (char input[])
+int extract_char (char input[]) {
+
+    int check;
+    char stringcheck[5];
+
+    for (int i = strlen(input); i >= 0 ; i--) {
+            // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
+            if (strstr(&input[i], "_") == &input[i]) {
+                strcpy(stringcheck, &input[i+2]);
+                check = atoi(&input[i+2]); 
+                printf("check in loop %d\n", check);
+                printf("stringcheck length: %ld\n", strlen(stringcheck));
+                for (int j = i+2; j < i+2+strlen(stringcheck); j++)
+                    input[j] = input[j+strlen(stringcheck)];
+                printf("in function after j for: %s\n", input);
+                break;
+            }
+        }
+    return check;
+}
 
 int main () {
     int check; // this variable should be replaced by the checksum sent by previous STM
@@ -19,6 +39,7 @@ int main () {
     char stringcheck[6];
 
     char input[100] = "helloB06_0B06_1B06_2B06_3"; // arbitrary string for testing (replace with message)
+
     //cast input to bytes
 
     
@@ -26,17 +47,7 @@ int main () {
 
     // extract previous checksum from message to check, then delete it from the input
     
-        for (int i = strlen(input); i >= 0 ; i--) {
-            // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
-            // 0x5F is the byte for a "_"
-            if (strstr(&input[i], 0x5F) == &input[i]) {
-                strcpy(stringcheck, &input[i+2]);
-                check = atoi(&input[i+2]); 
-                for (int j = i+2; j < i+2+strlen(stringcheck); j++)
-                input[j] = input[j+strlen(stringcheck)];
-                break;
-            }
-        }
+    check = extract_char(input);
 
     // perform checksum on message receieved
     int input_check = checksum(input);
