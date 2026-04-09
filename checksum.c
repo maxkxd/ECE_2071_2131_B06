@@ -27,7 +27,7 @@ int main () {
             if (strstr(&input[i], "_") == &input[i]) {
                 strcpy(stringcheck, &input[i+2]);
                 check = atoi(&input[i+2]); 
-                for (int j = i+2; j < strlen(stringcheck); j++)
+                for (int j = i+2; j < i+2+strlen(stringcheck); j++)
                 input[j] = input[j+strlen(stringcheck)];
             }
         }
