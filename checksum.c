@@ -10,6 +10,11 @@ int checksum (char str[]) {
     return temp;
 }
 
+void extract (char check[]) {
+    for (int j = i+5; j < strlen(check); j++)
+    input[j] = input[j+strlen(check)];
+}
+
 int main () {
     int check; // this variable should be replaced by the checksum sent by previous STM
 
@@ -19,12 +24,24 @@ int main () {
 
     // extract previous checksum from message to check, then delete it from the input
     
-        for (int i = 0; i < strlen(input); i++) {
+        for (int i = strlen(input); i > 0 ; i--) {
             // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
-            if (strstr(&input[i], B06_2) == &input[i]) {
+            if (strstr(&input[i], "B06_3") == &input[i]) {
                 check = &input[i+5]; 
                 for (int j = i+5; j < strlen(check); j++)
-                term[j] = term[j+strlen(check)];
+                input[j] = input[j+strlen(check)];
+            } else if (strstr(&input[i], "B06_2") == &input[i]) {
+                check = &input[i+5]; 
+                for (int j = i+5; j < strlen(check); j++)
+                input[j] = input[j+strlen(check)];
+            } else if (strstr(&input[i], "B06_1") == &input[i]) {
+                check = &input[i+5]; 
+                for (int j = i+5; j < strlen(check); j++)
+                input[j] = input[j+strlen(check)];
+            } else if (strstr(&input[i], "B06_0") == &input[i]) {
+                check = &input[i+5]; 
+                for (int j = i+5; j < strlen(check); j++)
+                input[j] = input[j+strlen(check)];
             }
         }
 
@@ -43,7 +60,7 @@ int main () {
         sprintf(buffer, "%d", checksum(input)); //converts checksum to string
         strcat(input, buffer);
     }
-    // Add code to send message
+    // Add code to send message i.e. Transmit()
 
     return 0;
 }
