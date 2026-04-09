@@ -70,8 +70,7 @@ typedef enum {
 } Role;
 
 //https://stackoverflow.com/questions/77244063/hal-uart-receive-it-will-only-run-once
-uint8_t buf_head[1];
-uint8_t buf_tail[1];
+uint8_t buf[1];
 static volatile uint8_t roleNum;
 static volatile uint8_t ctr;
 
@@ -81,12 +80,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (huart == &huart1 && roleNum == 0)
 	{
 		roleNum = 1;
-		HAL_UART_Receive_IT(&huart1, buf_tail, 1);
+		HAL_UART_Receive_IT(&huart1, buf, 1);
 	}
-	if (huart == &huart2 && roleNum == 0)
+	else if (huart == &huart2 && roleNum == 0)
 	{
 		roleNum = 2;
-		HAL_UART_Receive_IT(&huart2, buf_head, 1);
+		HAL_UART_Receive_IT(&huart2, buf, 1);
+	}
+	else if (huart == &huart1)
+	{
+		ctr++;
+		HAL_UART_Receive_IT(&huart1, buf, 1);
+	}
+	else
+	{
+		ctr++;
+		HAL_UART_Receive_IT(&huart2, buf, 1);
 	}
 }
 
@@ -151,15 +160,42 @@ void init_network(char *STMID, uint8_t *Id)
 	}
 }
 
-void listen()
+void listen(uint8_t *msg, int *bytes)
 {
-	int pos = 0;
-	uint8_t *msg = (uint8_t *)malloc(1);
-	msg[0] = head_buf[0];
-	while (head_buf[0] != 0x0A)
+	int temp = 0;
+	ctr = 0;
+
+	uint8_t *ptr = (uint8_t *)malloc(1);
+	ptr[ctr] = buf[ctr];
+
+	while (buf[0] != 0x0A)
 	{
-		pos++;
+		if (temp != ctr)
+		{
+			temp = ctr;
+			ptr = (uint8_t *)realloc(ptr, ctr+1);
+			ptr[ctr] = buf[ctr];
+		}
 	}
+	*bytes = ctr + 1;
+	msg = ptr;
+}
+
+void transmit(uint8_t *msg, int bytes, bool toComp)
+{
+	for (int i = 0; i < bytes; i++)
+	{
+		if (toComp)
+		{
+			HAL_UART_Transmit(&huart2, &msg[i], 1, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart1, &msg[i], 1, HAL_MAX_DELAY);
+		}
+		HAL_Delay(10);
+	}
+	// do something
 }
 
 /* USER CODE END 0 */
@@ -197,11 +233,10 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   // arbitrary
-  roleNum = 0;
   ctr = 0;
   HAL_Delay(1000);
-  HAL_UART_Receive_IT(&huart1, buf_tail, 1);
-  HAL_UART_Receive_IT(&huart2, buf_head, 1);
+  HAL_UART_Receive_IT(&huart1, buf, 1);
+  HAL_UART_Receive_IT(&huart2, buf, 1);
 
   /* USER CODE END 2 */
 
@@ -212,25 +247,56 @@ int main(void)
   Id[0] = 0;
 
   init_network(STMID, Id);
-  
-  buf_head[0] = 0;
-  buf_tail[0] = 0;
+
+  buf[0] = 0;
+
+  bool headTriggered = false;
+
+  uint8_t *msg = (uint8_t*)malloc(1);
+  msg[0] = 0;
+  int bytes;
 
   while (1)
   {
-	  if (Id == 0)
+	  if (buf[0] != 0 && Id[0] != 0)
 	  {
-		  if (buf_head != 0)
-		  {
-			  listen();
-			  HAL_Delay(100);
-			  transmit();
-		  }
+		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+		  listen(msg, &bytes);
+		  //checksum(msg);
+		  // if not the checksum pause
+		  HAL_Delay(250);
+		  // add id
+		  // checksum -> without parity bit
+
+		  transmit(msg, bytes, false);
+		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
+	  }
+
+	  if (buf[0] != 0 && Id[0] == 0 && !headTriggered)
+	  {
+		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+		  headTriggered = true;
+		  listen(msg, &bytes);
+		  // add id
+		  // checksum
+		  // HAL_Delay
+		  transmit(msg, bytes, false);
+		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
+	  }
+	  if (buf[0] != 0 && headTriggered)
+	  {
+		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 1);
+		  headTriggered = false;
+		  listen(msg, &bytes);
+		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, 0);
+		  transmit(msg, bytes, true);
 	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
+
+  free(msg);
   /* USER CODE END 3 */
 }
 
