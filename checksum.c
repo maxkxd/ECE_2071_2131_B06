@@ -29,6 +29,7 @@ int main () {
                 check = atoi(&input[i+2]); 
                 for (int j = i+2; j < i+2+strlen(stringcheck); j++)
                 input[j] = input[j+strlen(stringcheck)];
+                break;
             }
         }
 
