@@ -95,20 +95,22 @@ def UART2_write(ser, data):
 
 def UART2_read(ser, byteCount):
     """Default UART to read from STM 
-
-
     Args:
         ser (port): Initialised port for serial communication
         byteCount (int): Number of bytes of return data
-
-
     Returns:
         string: the decoded returned data
     """
-    data = ser.read(byteCount)  
+    chars = []
 
-
-    return data.decode()
+    for i in range(byteCount):
+        b = ser.read(1)
+        if len(b) != 1:
+            raise TimeoutError(
+                "ERROR: TIMED OUT"
+            )
+        chars.append(b.decode("utf-8"))
+    return "".join(chars)
 
 
 # polling serial devices
