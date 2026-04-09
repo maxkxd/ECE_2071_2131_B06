@@ -26,23 +26,23 @@ int main () {
             if (strstr(&input[i], "B06_3") == &input[i]) {
                 strcpy(stringcheck, &input[i+5])
                 check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
+                for (int j = i+5; j < strlen(stringcheck); j++)
+                input[j] = input[j+strlen(stringcheck)];
             } else if (strstr(&input[i], "B06_2") == &input[i]) {
                 strcpy(stringcheck, &input[i+5])
                 check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
+                for (int j = i+5; j < strlen(stringcheck); j++)
+                input[j] = input[j+strlen(stringcheck)];
             } else if (strstr(&input[i], "B06_1") == &input[i]) {
                 strcpy(stringcheck, &input[i+5])
                 check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
+                for (int j = i+5; j < strlen(stringcheck); j++)
+                input[j] = input[j+strlen(stringcheck)];
             } else if (strstr(&input[i], "B06_0") == &input[i]) {
                 strcpy(stringcheck, &input[i+5])
                 check = atoi(&input[i+5]); 
-                for (int j = i+5; j < strlen(check); j++)
-                input[j] = input[j+strlen(check)];
+                for (int j = i+5; j < strlen(stringcheck); j++)
+                input[j] = input[j+strlen(stringcheck)];
             }
         }
 
