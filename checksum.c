@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 // this function gets the checksum output as an integer
 int checksum (char str[]) {
@@ -15,7 +16,7 @@ int main () {
 
     char stringcheck[6];
 
-    char input[100] = "hello"; // arbitrary string for testing (replace with message)
+    char input[100] = "helloB06_2"; // arbitrary string for testing (replace with message)
 
     char buffer[50]; // initialise buffer
 
