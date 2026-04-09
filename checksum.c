@@ -10,13 +10,15 @@ int checksum (char str[]) {
     return temp;
 }
 
-void extract (char check[]) {
+void extract (char check[], int i) {
     for (int j = i+5; j < strlen(check); j++)
     input[j] = input[j+strlen(check)];
 }
 
 int main () {
     int check; // this variable should be replaced by the checksum sent by previous STM
+
+    char stringcheck[6];
 
     char input[100] = "hello"; // arbitrary string for testing (replace with message)
 
@@ -27,19 +29,23 @@ int main () {
         for (int i = strlen(input); i > 0 ; i--) {
             // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
             if (strstr(&input[i], "B06_3") == &input[i]) {
-                check = &input[i+5]; 
+                strcpy(stringcheck, &input[i+5])
+                check = atoi(&input[i+5]); 
                 for (int j = i+5; j < strlen(check); j++)
                 input[j] = input[j+strlen(check)];
             } else if (strstr(&input[i], "B06_2") == &input[i]) {
-                check = &input[i+5]; 
+                strcpy(stringcheck, &input[i+5])
+                check = atoi(&input[i+5]); 
                 for (int j = i+5; j < strlen(check); j++)
                 input[j] = input[j+strlen(check)];
             } else if (strstr(&input[i], "B06_1") == &input[i]) {
-                check = &input[i+5]; 
+                strcpy(stringcheck, &input[i+5])
+                check = atoi(&input[i+5]); 
                 for (int j = i+5; j < strlen(check); j++)
                 input[j] = input[j+strlen(check)];
             } else if (strstr(&input[i], "B06_0") == &input[i]) {
-                check = &input[i+5]; 
+                strcpy(stringcheck, &input[i+5])
+                check = atoi(&input[i+5]); 
                 for (int j = i+5; j < strlen(check); j++)
                 input[j] = input[j+strlen(check)];
             }
