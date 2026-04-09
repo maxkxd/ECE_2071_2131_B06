@@ -51,9 +51,3 @@ int main () {
 
     return 0;
 }
-
-// testing
-    // printf("%d\n",test[0]^test[1]);
-    // printf("%d\n",(test[0]^test[1])^test[2]);
-    // printf("%d\n",((test[0]^test[1])^test[2])^test[3]);
-    // printf("%d\n",(((test[0]^test[1])^test[2])^test[3])^test[4]);
