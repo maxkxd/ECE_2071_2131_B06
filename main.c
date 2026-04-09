@@ -149,24 +149,12 @@ void init_network(char *STMID, uint8_t *Id)
 		}
 	}
 }
-//
-//void network_idle(char *buff)
-//{
-//
-//	bool idle = true;
-//
-//	// while waiting for commands, listening through UART2
-//	while (idle)
-//	{
-//		// receiving arbitrary byte for now - ignore
-//		HAL_UART_Receive(
-//				&huart2,
-//				(uint8_t *)buff,
-//				1,
-//				HAL_MAX_DELAY
-//		);
-//	}
-//}
+
+void listen()
+{
+	
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -216,35 +204,21 @@ int main(void)
   Id[0] = 0;
 
   init_network(STMID, Id);
+  
+  buf_head[0] = 0;
+  buf_tail[0] = 0;
 
   while (1)
   {
-	  if (Id[0] == 0)
+	  if (Id == 0)
 	  {
-			HAL_GPIO_WritePin(
-				LD3_GPIO_Port,
-				LD3_Pin,
-				1);
-	  }
-	  else
-	  {
-		  for (int i = 0; i < Id[0]; i++)
+		  if (buf_head != 0)
 		  {
-		        HAL_GPIO_WritePin(
-		            LD3_GPIO_Port,
-		            LD3_Pin,
-		            1);
-				HAL_Delay(100);
-		        HAL_GPIO_WritePin(
-		            LD3_GPIO_Port,
-		            LD3_Pin,
-		            0);
-		        HAL_Delay(100);
+			  listen();
+			  HAL_Delay(100);
+			  transmit();
 		  }
 	  }
-
-	  HAL_Delay(1000);
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
