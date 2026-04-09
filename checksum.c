@@ -10,11 +10,6 @@ int checksum (char str[]) {
     return temp;
 }
 
-void extract (char check[], int i) {
-    for (int j = i+5; j < strlen(check); j++)
-    input[j] = input[j+strlen(check)];
-}
-
 int main () {
     int check; // this variable should be replaced by the checksum sent by previous STM
 
