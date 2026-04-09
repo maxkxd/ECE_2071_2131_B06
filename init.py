@@ -95,7 +95,7 @@ def UART2_write(ser, data):
 
 
 def UART2_read(ser, byteCount):
-    """Default UART to read from STM
+    """Default UART to read from STM 
 
 
     Args:
@@ -117,7 +117,7 @@ def UART2_read(ser, byteCount):
 port = find_port()
 ser = init_port(port)
 
-cmd = input("Please enter a message: ")+"\n"
+cmd = input("Please enter a message: ")+"\r\n"
 
 UART2_write(ser, cmd)
 #time.sleep(1)
