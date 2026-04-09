@@ -47,7 +47,6 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,143 +62,117 @@ static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN 0 */
 
 #define ID_LEN 6
-#define INIT_BUF_LEN 4
+#define INIT_BUF_LEN 3
+
+typedef enum {
+	HEAD,
+	TAIL
+} Role;
+
+//https://stackoverflow.com/questions/77244063/hal-uart-receive-it-will-only-run-once
+uint8_t buf_head[1];
+uint8_t buf_tail[1];
+static volatile uint8_t roleNum;
 
 // using an interrupt to receive initial msg from huart2
-//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart == &huart1 && roleNum == 0)
+	{
+		roleNum = 1;
+		//HAL_UART_Receive_IT(&huart1, buf_tail, 1);
+	}
+	if (huart == &huart2 && roleNum == 0)
+	{
+		roleNum = 2;
+		//HAL_UART_Receive_IT(&huart2, buf_head, 1);
+	}
+}
+
+Role init_role()
+{
+	Role role;
+
+	while (roleNum == 0)
+	{
+        HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+        HAL_Delay(200);
+        HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+        HAL_Delay(200);
+	}
+
+	char sig_buf[2] = "1";
+
+	if (roleNum == 1)
+	{
+		role = TAIL;
+		HAL_UART_Transmit(&huart1, (uint8_t *)sig_buf, 1, HAL_MAX_DELAY);
+	}
+	else
+	{
+		role = HEAD;
+		HAL_UART_Transmit(&huart1, (uint8_t *)sig_buf, 1, HAL_MAX_DELAY);
+	}
+
+	return role;
+}
+
+void init_network(char *STMID, uint8_t *Id)
+{
+
+	Role role = init_role();
+
+	if (role == HEAD)
+	{
+		Id[0] = 0;
+		HAL_UART_Transmit(&huart1, Id, 1, HAL_MAX_DELAY);
+		return;
+	}
+
+	bool IdFound = false;
+	uint8_t buf[1];
+
+	while (!IdFound)
+	{
+		if (HAL_UART_Receive(&huart1, buf, 1, HAL_MAX_DELAY) == HAL_OK)
+		{
+			IdFound = true;
+
+			// increment previous id for this stm's ID
+			*Id = buf[0] + 1;
+			char IdStr[2];
+			sprintf(IdStr, "%u", *Id);
+			STMID[4] = IdStr[0];
+
+			// transmit current id to next STM
+			HAL_UART_Transmit(&huart1, Id, 1, HAL_MAX_DELAY);
+		}
+	}
+}
+//
+//void network_idle(char *buff)
 //{
 //
+//	bool idle = true;
+//
+//	// while waiting for commands, listening through UART2
+//	while (idle)
+//	{
+//		// receiving arbitrary byte for now - ignore
+//		HAL_UART_Receive(
+//				&huart2,
+//				(uint8_t *)buff,
+//				1,
+//				HAL_MAX_DELAY
+//		);
+//	}
 //}
-
-void init_network(char *STMID)
-{
-  char headBuf[4] = "n\0"; // random character - no meaning
-  char buf[4] = "n\0";
-  bool initialised = false;
-
-  // this will run indefinitely until STM's position is determined
-  while (!initialised)
-  {
-
-    // listening for communication with the computer
-    // Used ChatGPT to find why the UART_Receive wasn't 'receiving' anything
-    // ChatGPT recommended to lower the timeout from max timeout
-    HAL_UART_Receive(
-        &huart2,
-        (uint8_t *)headBuf,
-        INIT_BUF_LEN,
-        50);
-
-    HAL_UART_Receive(
-        &huart1,
-        (uint8_t *)buf,
-        INIT_BUF_LEN,
-        1000);
-
-    // if read 'a' => head STM
-    if (headBuf[0] == 'a')
-    {
-      initialised = true;
-
-      // assigning ID 0
-      STMID[4] = '0';
-      HAL_UART_Transmit(
-          &huart2,
-          (uint8_t *)STMID,
-          ID_LEN,
-          HAL_MAX_DELAY);
-    }
-
-    else if (buf[0] == 'b')
-    {
-      initialised = true;
-
-      // increment ID
-      uint8_t Id = atoi(&buf[1]) + 1;
-      char chId[2];
-      sprintf(chId, "%d", Id);
-
-      // assign Id
-      STMID[4] = chId[0];
-    }
-  }
-
-  char msg[3] = {'b', STMID[4], '\0'};
-
-  HAL_UART_Transmit(
-      &huart1,
-      (uint8_t *)msg,
-      3,
-      HAL_MAX_DELAY);
-}
-
-void network_idle(char *buff)
-{
-
-	bool idle = true;
-
-	// while waiting for commands, listening through UART2
-	while (idle)
-	{
-		// receiving arbitrary byte for now - ignore
-		HAL_UART_Receive(
-				&huart2,
-				(uint8_t *)buff,
-				1,
-				HAL_MAX_DELAY
-		);
-	}
-}
-
-// temporary, flashes ID on STM
-void ID_flash(char *STMID)
-{
-	while (1)
-	{
-
-		if (strcmp(STMID, "B06_0") == 0)
-		{
-		  // test
-		  HAL_GPIO_WritePin(
-			  LD3_GPIO_Port,
-			  LD3_Pin,
-			  1);
-		  HAL_Delay(1000);
-		  HAL_GPIO_WritePin(
-			  LD3_GPIO_Port,
-			  LD3_Pin,
-			  0);
-		  HAL_Delay(1000);
-		}
-
-		else
-		{
-		  int ID = atoi(&STMID[4]);
-
-		  for (int i = 0; i < ID; i++)
-		  {
-			HAL_GPIO_WritePin(
-				LD3_GPIO_Port,
-				LD3_Pin,
-				1);
-			HAL_Delay(100);
-			HAL_GPIO_WritePin(
-				LD3_GPIO_Port,
-				LD3_Pin,
-				0);
-			HAL_Delay(100);
-		  }
-
-		  HAL_Delay(1000);
-		}
-	}
-}
 /* USER CODE END 0 */
 
 /**
- * @brief  The application entry point.
- * @retval int
- */
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
 
@@ -228,58 +201,49 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  // arbitrary
+  roleNum = 0;
+  HAL_Delay(1000);
+  HAL_UART_Receive_IT(&huart1, buf_tail, 1);
+  HAL_UART_Receive_IT(&huart2, buf_head, 1);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  // char buf[INIT_BUF_LEN] = "b\0";
   char STMID[ID_LEN] = "B06_A";
+  uint8_t Id[1];
+  Id[0] = 0;
 
-  init_network(STMID);
-
-  bool headSTM = strcmp(STMID, "B06_0") == 0;
-
-  ID_flash(STMID);
+  init_network(STMID, Id);
 
   while (1)
   {
-//    if (headSTM)
-//    {
-//
-//      // test
-//      HAL_GPIO_WritePin(
-//          LD3_GPIO_Port,
-//          LD3_Pin,
-//          1);
-//      HAL_Delay(1000);
-//      HAL_GPIO_WritePin(
-//          LD3_GPIO_Port,
-//          LD3_Pin,
-//          0);
-//      HAL_Delay(1000);
-//    }
-//
-//    else
-//    {
-//      int ID = atoi(&STMID[4]);
-//
-//      for (int i = 0; i < ID; i++)
-//      {
-//        HAL_GPIO_WritePin(
-//            LD3_GPIO_Port,
-//            LD3_Pin,
-//            1);
-//        HAL_Delay(100);
-//        HAL_GPIO_WritePin(
-//            LD3_GPIO_Port,
-//            LD3_Pin,
-//            0);
-//        HAL_Delay(100);
-//      }
-//
-//      HAL_Delay(1000 - ID*100);
-//    }
+	  if (Id[0] == 0)
+	  {
+			HAL_GPIO_WritePin(
+				LD3_GPIO_Port,
+				LD3_Pin,
+				1);
+	  }
+	  else
+	  {
+		  for (int i = 0; i < Id[0]; i++)
+		  {
+		        HAL_GPIO_WritePin(
+		            LD3_GPIO_Port,
+		            LD3_Pin,
+		            1);
+				HAL_Delay(100);
+		        HAL_GPIO_WritePin(
+		            LD3_GPIO_Port,
+		            LD3_Pin,
+		            0);
+		        HAL_Delay(100);
+		  }
+	  }
+
+	  HAL_Delay(1000);
 
     /* USER CODE END WHILE */
 
@@ -289,30 +253,30 @@ int main(void)
 }
 
 /**
- * @brief System Clock Configuration
- * @retval None
- */
+  * @brief System Clock Configuration
+  * @retval None
+  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-   */
+  */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
     Error_Handler();
   }
 
   /** Configure LSE Drive Capability
-   */
+  */
   HAL_PWR_EnableBkUpAccess();
   __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-   * in the RCC_OscInitTypeDef structure.
-   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSE | RCC_OSCILLATORTYPE_MSI;
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSE|RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
@@ -330,8 +294,9 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -343,15 +308,15 @@ void SystemClock_Config(void)
   }
 
   /** Enable MSI Auto calibration
-   */
+  */
   HAL_RCCEx_EnableMSIPLLMode();
 }
 
 /**
- * @brief USART1 Initialization Function
- * @param None
- * @retval None
- */
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_USART1_UART_Init(void)
 {
 
@@ -379,13 +344,14 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
+
 }
 
 /**
- * @brief USART2 Initialization Function
- * @param None
- * @retval None
- */
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_USART2_UART_Init(void)
 {
 
@@ -413,13 +379,14 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
 }
 
 /**
- * @brief GPIO Initialization Function
- * @param None
- * @retval None
- */
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -452,9 +419,9 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /**
- * @brief  This function is executed in case of error occurrence.
- * @retval None
- */
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -466,14 +433,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
- * @brief  Reports the name of the source file and the source line number
- *         where the assert_param error has occurred.
- * @param  file: pointer to the source file name
- * @param  line: assert_param error line source number
- * @retval None
- */
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
