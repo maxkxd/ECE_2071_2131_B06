@@ -80,12 +80,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (huart == &huart1 && roleNum == 0)
 	{
 		roleNum = 1;
-		//HAL_UART_Receive_IT(&huart1, buf_tail, 1);
+		HAL_UART_Receive_IT(&huart1, buf_tail, 1);
 	}
 	if (huart == &huart2 && roleNum == 0)
 	{
 		roleNum = 2;
-		//HAL_UART_Receive_IT(&huart2, buf_head, 1);
+		HAL_UART_Receive_IT(&huart2, buf_head, 1);
 	}
 }
 
