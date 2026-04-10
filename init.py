@@ -45,8 +45,8 @@ def init_port(port):
     try:
         ser = serial.Serial(
             port,
-            115200,
-            timeout=5,
+            9600,
+            timeout=2,
             write_timeout=2
 
 
@@ -62,9 +62,6 @@ def init_port(port):
         print("Error: Port not found")
         sys.exit()
 
-
-
-
 def UART2_write(ser, data):
     """Using the default UART to write to STM
 
@@ -78,11 +75,12 @@ def UART2_write(ser, data):
     writeData = data.encode("utf-8")
     byteCount = len(writeData)
 
+    ser.write(b"\r")
+    ser.write(bytes([byteCount]))
     for byte in writeData:
         try:
             ser.write(bytes([byte]))
-            bytesWritten += 1 #allowing time to for STM32 to receive byte
-
+            bytesWritten += 1
 
         except serial.SerialTimeoutException:
             print("Error: Cannot write to STM")
@@ -90,27 +88,17 @@ def UART2_write(ser, data):
     if byteCount != bytesWritten:
         print("Error: Incomplete write to STM")
 
-
-
-
 def UART2_read(ser, byteCount):
     """Default UART to read from STM 
     Args:
         ser (port): Initialised port for serial communication
-        byteCount (int): Number of bytes of return data
     Returns:
         string: the decoded returned data
     """
-    chars = []
-
-    for i in range(byteCount):
-        b = ser.read(1)
-        if len(b) != 1:
-            raise TimeoutError(
-                "ERROR: TIMED OUT"
-            )
-        chars.append(b.decode("utf-8"))
-    return "".join(chars)
+    data = b''
+    for i in range(byteCount + 27):
+        data += ser.read(1)
+    return data.decode("utf-8")
 
 
 # polling serial devices
@@ -118,14 +106,12 @@ def UART2_read(ser, byteCount):
 port = find_port()
 ser = init_port(port)
 
-cmd = "a"
+msg = input("Please enter a message: ")
+UART2_write(ser, msg)
+time.sleep(1)
+response = UART2_read(ser, len(msg))
 
-UART2_write(ser, cmd)
-#time.sleep(1)
-#response = UART2_read(ser, 6)
-
-
-#print(response)
+print(response)
 
 # reading message from head after loop
 #time.sleep(1)
@@ -135,14 +121,15 @@ UART2_write(ser, cmd)
 #print(reading)
 
 #message="\r\n"
-try:
-    while True:
-        msg = input("Please enter a message: ")+"\r\n"
-        UART2_write(ser, msg)
 
-        reading = UART2_read(ser, len(msg))
+# try:
+#     while True:
+#         msg = input("Please enter a message: ")+"\r\n"
+#         UART2_write(ser, msg)
 
-        print(reading)
-except KeyboardInterrupt:
-    print("Program finished.")
-    ser.close()
+#         reading = UART2_read(ser, len(msg))
+
+#         print(reading)
+# except KeyboardInterrupt:
+#     print("Program finished.")
+#     ser.close()
