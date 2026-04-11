@@ -33,7 +33,6 @@ int extract_char (char input[]) {
     return check;
 }
 
-// the below function has not been tested yet
 int extract_bytes (uint8_t input[]) {
 
     int check;
