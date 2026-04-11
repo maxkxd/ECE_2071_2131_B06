@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,16 +78,16 @@ typedef enum {
 uint8_t xbuf[1];
 uint8_t ybuf[1];
 volatile int msg_len = 0;
-volatile int current_len = 0;
 volatile Role role = UNASSIGNED;
-volatile int looped = 0;
+volatile bool looped = false;
 volatile State state = IDLE;
-volatile int message_received = 0;
+//volatile int message_received = 0; -> this was only used once?
 volatile uint8_t *msg;
 volatile uint8_t ID = 0x30;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+  static int current_len = 0;
   if (state == IDLE && huart == &huart1)
   {
     HAL_UART_Receive_IT(&huart1, xbuf, 1);
@@ -94,7 +95,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {
       state = WAIT_FOR_LEN;
       current_len = 0;
-      if (looped == 0)
+      if (!looped)
       {
         role = TAIL;
       }
@@ -113,7 +114,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   }
   else if (state == WAIT_FOR_LEN && huart == &huart1)
   {
-    if (role == HEAD && looped == 1)
+    if (role == HEAD && looped)
     {
       HAL_UART_Receive_IT(&huart1, xbuf, 1);
       msg_len = xbuf[0];
@@ -137,7 +138,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   }
   else if (state == RECEIVING && huart == &huart1)
   {
-    if (role == HEAD && looped == 1)
+    if (role == HEAD && looped)
     {
       HAL_UART_Receive_IT(&huart1, xbuf, 1);
       current_len++;
@@ -158,7 +159,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       }
     }
   }
-  else if (state == RECEIVING && huart == &huart2 && role == HEAD && looped == 0)
+  else if (state == RECEIVING && huart == &huart2 && role == HEAD && !looped)
   {
     HAL_UART_Receive_IT(&huart2, ybuf, 1);
     current_len++;
@@ -170,10 +171,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   }
 }
 
-void transmit(uint8_t *msg, uint8_t msg_len, int toComp)
+void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
 {
   uint8_t return_char = 0x0D;
-  if (toComp == 1)
+  
+  if (toComp)
   {
     HAL_UART_Transmit(&huart2, &return_char, 1, HAL_MAX_DELAY);
     HAL_Delay(10);
@@ -250,6 +252,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   while (1)
   {
     if (state == TRANSMITTING)
@@ -279,15 +282,15 @@ int main(void)
 
       uint8_t *ptr = new_msg;
       uint8_t byte_len = new_len;
-      if (role == HEAD && looped == 0)
+      if (role == HEAD && !looped)
       {
-        transmit(ptr, byte_len, 0);
-        looped = 1;
+        transmit(ptr, byte_len, false);
+        looped = true;
       }
-      else if (role == HEAD && looped == 1)
+      else if (role == HEAD && looped)
       {
-        transmit(ptr, byte_len, 1);
-        looped = 0;
+        transmit(ptr, byte_len, true);
+        looped = false;
       }
       else if (role == TAIL)
       {
