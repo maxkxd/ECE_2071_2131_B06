@@ -76,8 +76,6 @@ typedef enum {
 
 uint8_t xbuf[1];
 uint8_t ybuf[1];
-volatile uint8_t head_buf;
-volatile uint8_t tail_buf;
 volatile int msg_len = 0;
 volatile int current_len = 0;
 volatile Role role = UNASSIGNED;
@@ -92,8 +90,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   if (state == IDLE && huart == &huart1)
   {
     HAL_UART_Receive_IT(&huart1, xbuf, 1);
-    tail_buf = xbuf[0];
-    if (tail_buf == 0x0D)
+    if (xbuf[0] == 0x0D)
     {
       state = WAIT_FOR_LEN;
       current_len = 0;
@@ -106,8 +103,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   else if (state == IDLE && huart == &huart2)
   {
     HAL_UART_Receive_IT(&huart2, ybuf, 1);
-    head_buf = ybuf[0];
-    if (head_buf == 0x0D)
+    if (ybuf[0] == 0x0D)
     {
       state = WAIT_FOR_LEN;
       current_len = 0;
@@ -144,9 +140,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if (role == HEAD && looped == 1)
     {
       HAL_UART_Receive_IT(&huart1, xbuf, 1);
-      tail_buf = xbuf[0];
       current_len++;
-      msg[current_len - 1] = tail_buf;
+      msg[current_len - 1] = xbuf[0];
       if (current_len >= msg_len)
       {
         state = TRANSMITTING;
@@ -155,9 +150,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     else if (role == TAIL)
     {
       HAL_UART_Receive_IT(&huart1, xbuf, 1);
-      tail_buf = xbuf[0];
       current_len++;
-      msg[current_len - 1] = tail_buf;
+      msg[current_len - 1] = xbuf[0];
       if (current_len >= msg_len)
       {
         state = TRANSMITTING;
@@ -167,9 +161,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   else if (state == RECEIVING && huart == &huart2 && role == HEAD && looped == 0)
   {
     HAL_UART_Receive_IT(&huart2, ybuf, 1);
-    head_buf = ybuf[0];
     current_len++;
-    msg[current_len - 1] = head_buf;
+    msg[current_len - 1] = ybuf[0];
     if (current_len >= msg_len)
     {
       state = TRANSMITTING;
