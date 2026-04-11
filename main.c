@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -60,115 +60,161 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+typedef enum {
+  IDLE,
+  WAIT_FOR_LEN,
+  RECEIVING,
+  TRANSMITTING
+} State;
+
+typedef enum {
+  UNASSIGNED,
+  TAIL,
+  HEAD
+} Role;
+
 uint8_t xbuf[1];
 uint8_t ybuf[1];
 volatile uint8_t head_buf;
 volatile uint8_t tail_buf;
 volatile int msg_len = 0;
 volatile int current_len = 0;
-volatile uint8_t roleNum = 0;
+volatile Role role = UNASSIGNED;
 volatile int looped = 0;
-volatile int state = 0; // 0 = Waiting, 1 = Waiting for Length, 2 = Receiving Message, 3 = Sending Message
+volatile State state = IDLE;
 volatile int message_received = 0;
-volatile uint8_t* msg;
+volatile uint8_t *msg;
 volatile uint8_t ID = 0x30;
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-	if (state == 0 && huart == &huart1){
-		HAL_UART_Receive_IT(&huart1, xbuf, 1);
-		tail_buf = xbuf[0];
-		if (tail_buf == 0x0D){
-			state = 1;
-			current_len = 0;
-			if (looped == 0){
-				roleNum = 1;
-			}
-		}
-	} else if (state == 0 && huart == &huart2){
-		HAL_UART_Receive_IT(&huart2, ybuf, 1);
-		head_buf = ybuf[0];
-		if (head_buf == 0x0D){
-			state = 1;
-			current_len = 0;
-			roleNum = 2;
-			ID = 0x30;
-		}
-	} else if (state == 1 && huart == &huart1){
-		if (roleNum == 2 && looped == 1){
-			HAL_UART_Receive_IT(&huart1, xbuf, 1);
-			msg_len = xbuf[0];
-			msg = (uint8_t*)malloc(msg_len);
-			state = 2;
-		} else if (roleNum == 1){
-			HAL_UART_Receive_IT(&huart1, xbuf, 1);
-			msg_len = xbuf[0];
-			msg = (uint8_t*)malloc(msg_len);
-			state = 2;
-		}
-	} else if (state == 1 && huart == &huart2 && roleNum == 2){
-		HAL_UART_Receive_IT(&huart2, ybuf, 1);
-		msg_len = ybuf[0];
-		msg = (uint8_t*)malloc(msg_len);
-		state = 2;
-	} else if (state == 2 && huart == &huart1){
-		if (roleNum == 2 && looped == 1){
-			HAL_UART_Receive_IT(&huart1, xbuf, 1);
-			tail_buf = xbuf[0];
-			current_len++;
-			msg[current_len - 1] = tail_buf;
-			if (current_len >= msg_len){
-			    state = 3;
-			}
-		} else if (roleNum == 1){
-			HAL_UART_Receive_IT(&huart1, xbuf, 1);
-			tail_buf = xbuf[0];
-			current_len++;
-			msg[current_len - 1] = tail_buf;
-			if (current_len >= msg_len){
-			    state = 3;
-			}
-		}
-	} else if (state == 2 && huart == &huart2 && roleNum == 2 && looped == 0){
-		HAL_UART_Receive_IT(&huart2, ybuf, 1);
-		head_buf = ybuf[0];
-		current_len++;
-		msg[current_len - 1] = head_buf;
-		if (current_len >= msg_len){
-		    state = 3;
-		}
-	}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (state == IDLE && huart == &huart1)
+  {
+    HAL_UART_Receive_IT(&huart1, xbuf, 1);
+    tail_buf = xbuf[0];
+    if (tail_buf == 0x0D)
+    {
+      state = WAIT_FOR_LEN;
+      current_len = 0;
+      if (looped == 0)
+      {
+        role = TAIL;
+      }
+    }
+  }
+  else if (state == IDLE && huart == &huart2)
+  {
+    HAL_UART_Receive_IT(&huart2, ybuf, 1);
+    head_buf = ybuf[0];
+    if (head_buf == 0x0D)
+    {
+      state = WAIT_FOR_LEN;
+      current_len = 0;
+      role = HEAD;
+      ID = 0x30;
+    }
+  }
+  else if (state == WAIT_FOR_LEN && huart == &huart1)
+  {
+    if (role == HEAD && looped == 1)
+    {
+      HAL_UART_Receive_IT(&huart1, xbuf, 1);
+      msg_len = xbuf[0];
+      msg = (uint8_t *)malloc(msg_len);
+      state = RECEIVING;
+    }
+    else if (role == TAIL)
+    {
+      HAL_UART_Receive_IT(&huart1, xbuf, 1);
+      msg_len = xbuf[0];
+      msg = (uint8_t *)malloc(msg_len);
+      state = RECEIVING;
+    }
+  }
+  else if (state == WAIT_FOR_LEN && huart == &huart2 && role == HEAD)
+  {
+    HAL_UART_Receive_IT(&huart2, ybuf, 1);
+    msg_len = ybuf[0];
+    msg = (uint8_t *)malloc(msg_len);
+    state = RECEIVING;
+  }
+  else if (state == RECEIVING && huart == &huart1)
+  {
+    if (role == HEAD && looped == 1)
+    {
+      HAL_UART_Receive_IT(&huart1, xbuf, 1);
+      tail_buf = xbuf[0];
+      current_len++;
+      msg[current_len - 1] = tail_buf;
+      if (current_len >= msg_len)
+      {
+        state = TRANSMITTING;
+      }
+    }
+    else if (role == TAIL)
+    {
+      HAL_UART_Receive_IT(&huart1, xbuf, 1);
+      tail_buf = xbuf[0];
+      current_len++;
+      msg[current_len - 1] = tail_buf;
+      if (current_len >= msg_len)
+      {
+        state = TRANSMITTING;
+      }
+    }
+  }
+  else if (state == RECEIVING && huart == &huart2 && role == HEAD && looped == 0)
+  {
+    HAL_UART_Receive_IT(&huart2, ybuf, 1);
+    head_buf = ybuf[0];
+    current_len++;
+    msg[current_len - 1] = head_buf;
+    if (current_len >= msg_len)
+    {
+      state = TRANSMITTING;
+    }
+  }
 }
 
-void transmit(uint8_t* msg, uint8_t msg_len, int toComp){
-	uint8_t return_char = 0x0D;
-	if (toComp == 1){
-		HAL_UART_Transmit(&huart2, &return_char, 1, HAL_MAX_DELAY);
-		HAL_Delay(10);
-		HAL_UART_Transmit(&huart2, &msg_len, 1, HAL_MAX_DELAY);
-		HAL_Delay(10);
-	} else {
-		HAL_UART_Transmit(&huart1, &return_char, 1, HAL_MAX_DELAY);
-		HAL_Delay(10);
-		HAL_UART_Transmit(&huart1, &msg_len, 1, HAL_MAX_DELAY);
-		HAL_Delay(10);
-	}
-	for (int i = 0; i < msg_len; i++){
-		if (toComp == 1){
-			HAL_UART_Transmit(&huart2, &msg[i], 1, HAL_MAX_DELAY);
-		} else {
-			HAL_UART_Transmit(&huart1, &msg[i], 1, HAL_MAX_DELAY);
-		}
-		HAL_Delay(100);
-	}
-	state = 0;
+void transmit(uint8_t *msg, uint8_t msg_len, int toComp)
+{
+  uint8_t return_char = 0x0D;
+  if (toComp == 1)
+  {
+    HAL_UART_Transmit(&huart2, &return_char, 1, HAL_MAX_DELAY);
+    HAL_Delay(10);
+    HAL_UART_Transmit(&huart2, &msg_len, 1, HAL_MAX_DELAY);
+    HAL_Delay(10);
+  }
+  else
+  {
+    HAL_UART_Transmit(&huart1, &return_char, 1, HAL_MAX_DELAY);
+    HAL_Delay(10);
+    HAL_UART_Transmit(&huart1, &msg_len, 1, HAL_MAX_DELAY);
+    HAL_Delay(10);
+  }
+  for (int i = 0; i < msg_len; i++)
+  {
+    if (toComp == 1)
+    {
+      HAL_UART_Transmit(&huart2, &msg[i], 1, HAL_MAX_DELAY);
+    }
+    else
+    {
+      HAL_UART_Transmit(&huart1, &msg[i], 1, HAL_MAX_DELAY);
+    }
+    HAL_Delay(100);
+  }
+  state = IDLE;
 }
 
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -213,37 +259,48 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if (state == 3) {
-		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-		  HAL_Delay(250);
-		  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+    if (state == TRANSMITTING)
+    {
+      // holding data for 250ms
+      HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+      HAL_Delay(250);
+      HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
-		  if (roleNum == 1){
-			  ID = msg[msg_len - 1] + 1;
-		  }
-		  int new_len = msg_len + 5;
-		  uint8_t* new_msg = (uint8_t*)malloc(new_len);
-		  for (int i = 0; i < msg_len; i++){
-		      new_msg[i] = msg[i];
-		  }
-		  new_msg[msg_len] = 'B';
-		  new_msg[msg_len + 1] = '0';
-		  new_msg[msg_len + 2] = '6';
-		  new_msg[msg_len + 3] = '_';
-		  new_msg[msg_len + 4] = ID;
+      if (role == TAIL)
+      {
+        ID = msg[msg_len - 1] + 1;
+      }
+      int new_len = msg_len + 5;
+      uint8_t *new_msg = (uint8_t *)malloc(new_len);
 
-		  uint8_t** ptr = &new_msg;
-		  uint8_t byte_len = new_len;
-		  if (roleNum == 2 && looped == 0){
-			  transmit(*ptr, byte_len, 0);
-			  looped = 1;
-		  } else if (roleNum == 2 && looped == 1){
-			  transmit(*ptr, byte_len, 1);
-			  looped = 0;
-		  } else if (roleNum == 1){
-			  transmit(*ptr, byte_len, 0);
-		  }
-	  }
+      for (int i = 0; i < msg_len; i++)
+      {
+        new_msg[i] = msg[i];
+      }
+
+      new_msg[msg_len] = 'B';
+      new_msg[msg_len + 1] = '0';
+      new_msg[msg_len + 2] = '6';
+      new_msg[msg_len + 3] = '_';
+      new_msg[msg_len + 4] = ID;
+
+      uint8_t *ptr = new_msg;
+      uint8_t byte_len = new_len;
+      if (role == HEAD && looped == 0)
+      {
+        transmit(ptr, byte_len, 0);
+        looped = 1;
+      }
+      else if (role == HEAD && looped == 1)
+      {
+        transmit(ptr, byte_len, 1);
+        looped = 0;
+      }
+      else if (role == TAIL)
+      {
+        transmit(ptr, byte_len, 0);
+      }
+    }
 
     /* USER CODE END WHILE */
 
@@ -253,30 +310,30 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
     Error_Handler();
   }
 
   /** Configure LSE Drive Capability
-  */
+   */
   HAL_PWR_EnableBkUpAccess();
   __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSE|RCC_OSCILLATORTYPE_MSI;
+   * in the RCC_OscInitTypeDef structure.
+   */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSE | RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
@@ -294,9 +351,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -308,15 +364,15 @@ void SystemClock_Config(void)
   }
 
   /** Enable MSI Auto calibration
-  */
+   */
   HAL_RCCEx_EnableMSIPLLMode();
 }
 
 /**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USART1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USART1_UART_Init(void)
 {
 
@@ -344,14 +400,13 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
-
 }
 
 /**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USART2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USART2_UART_Init(void)
 {
 
@@ -379,14 +434,13 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -419,9 +473,9 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -433,14 +487,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
