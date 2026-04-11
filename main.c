@@ -88,6 +88,8 @@ volatile uint8_t ID = 0x30;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   static int current_len = 0;
+
+  // if idle and msg received is \r, set stm to wait for msg length (in bytes)
   if (state == IDLE && huart == &huart1)
   {
     HAL_UART_Receive_IT(&huart1, xbuf, 1);
@@ -112,13 +114,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       ID = 0x30;
     }
   }
+
+  // if waiting for length, and ISR triggered from rx
   else if (state == WAIT_FOR_LEN && huart == &huart1)
   {
+    // if receiving from last stm
     if (role == HEAD && looped)
     {
       HAL_UART_Receive_IT(&huart1, xbuf, 1);
       msg_len = xbuf[0];
+
+      // allocate memory for incoming msg
       msg = (uint8_t *)malloc(msg_len);
+
       state = RECEIVING;
     }
     else if (role == TAIL)
@@ -129,37 +137,42 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       state = RECEIVING;
     }
   }
-  else if (state == WAIT_FOR_LEN && huart == &huart2 && role == HEAD)
+  // if waiting for length, and ISR triggered from computer
+  else if (state == WAIT_FOR_LEN && huart == &huart2) // && role == HEAD is implicit if data is received from huart2
   {
     HAL_UART_Receive_IT(&huart2, ybuf, 1);
     msg_len = ybuf[0];
     msg = (uint8_t *)malloc(msg_len);
     state = RECEIVING;
   }
+
+  // if receiving data through rx
   else if (state == RECEIVING && huart == &huart1)
   {
-    if (role == HEAD && looped)
+    // NOTE: Wouldn't the previous if statements be redundant since
+    // any signal through the huart1 will be when it has looped or if its a tail
+    HAL_UART_Receive_IT(&huart1, xbuf, 1);
+    current_len++;
+    msg[current_len - 1] = xbuf[0];
+    if (current_len >= msg_len)
     {
-      HAL_UART_Receive_IT(&huart1, xbuf, 1);
-      current_len++;
-      msg[current_len - 1] = xbuf[0];
-      if (current_len >= msg_len)
-      {
-        state = TRANSMITTING;
-      }
+      state = TRANSMITTING;
     }
-    else if (role == TAIL)
-    {
-      HAL_UART_Receive_IT(&huart1, xbuf, 1);
-      current_len++;
-      msg[current_len - 1] = xbuf[0];
-      if (current_len >= msg_len)
-      {
-        state = TRANSMITTING;
-      }
-    }
+
+    // if (role == TAIL || (role == HEAD && looped))
+    // {
+    //   HAL_UART_Receive_IT(&huart1, xbuf, 1);
+    //   current_len++;
+    //   msg[current_len - 1] = xbuf[0];
+    //   if (current_len >= msg_len)
+    //   {
+    //     state = TRANSMITTING;
+    //   }
+    // }
   }
-  else if (state == RECEIVING && huart == &huart2 && role == HEAD && !looped)
+
+  // if receiving init
+  else if (state == RECEIVING && huart == &huart2) //  && role == HEAD && !looped is implicit if data is received from huart2
   {
     HAL_UART_Receive_IT(&huart2, ybuf, 1);
     current_len++;
@@ -174,7 +187,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
 {
   uint8_t return_char = 0x0D;
-  
+
   if (toComp)
   {
     HAL_UART_Transmit(&huart2, &return_char, 1, HAL_MAX_DELAY);
@@ -191,7 +204,7 @@ void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
   }
   for (int i = 0; i < msg_len; i++)
   {
-    if (toComp == 1)
+    if (toComp)
     {
       HAL_UART_Transmit(&huart2, &msg[i], 1, HAL_MAX_DELAY);
     }
@@ -238,7 +251,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_Delay(250);
+  HAL_Delay(250); // delay to stop transient response/floating pins triggering ISR
   HAL_UART_Receive_IT(&huart1, xbuf, 1);
   HAL_UART_Receive_IT(&huart2, ybuf, 1);
 
@@ -252,6 +265,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  uint8_t *ptr;
+  uint8_t byte_len;
 
   while (1)
   {
@@ -269,6 +285,12 @@ int main(void)
       int new_len = msg_len + 5;
       uint8_t *new_msg = (uint8_t *)malloc(new_len);
 
+      // if new_msg cannot allocate mem cancel the program
+      if (new_msg == NULL)
+      {
+        return 1;
+      }
+
       for (int i = 0; i < msg_len; i++)
       {
         new_msg[i] = msg[i];
@@ -280,8 +302,11 @@ int main(void)
       new_msg[msg_len + 3] = '_';
       new_msg[msg_len + 4] = ID;
 
-      uint8_t *ptr = new_msg;
-      uint8_t byte_len = new_len;
+
+      ptr = new_msg;
+      byte_len = new_len;
+
+      // logic to define whether the stm should transmit through tx or uart2
       if (role == HEAD && !looped)
       {
         transmit(ptr, byte_len, false);
@@ -294,9 +319,12 @@ int main(void)
       }
       else if (role == TAIL)
       {
-        transmit(ptr, byte_len, 0);
+        transmit(ptr, byte_len, false);
       }
     }
+
+    // freeing unused data
+    free(new_msg);
 
     /* USER CODE END WHILE */
 
