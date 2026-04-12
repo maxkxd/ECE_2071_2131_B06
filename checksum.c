@@ -4,11 +4,12 @@
 #include <stdint.h>
 
 // this function gets the checksum output as an integer
-int checksum (char str[]) {
-    int temp = str[0];
+uint8_t checksum (char str[]) {
+    uint8_t temp = str[0];
     for (int i = 1; i < strlen(str); i++) {
         temp = temp^str[i];
     }
+    printf("%d\n", temp);
     return temp;
 }
 
@@ -33,9 +34,9 @@ int extract_char (char input[]) {
     return check;
 }
 
-int extract_bytes (uint8_t input[]) {
+uint8_t extract_bytes (uint8_t input[]) {
 
-    int check;
+    uint8_t check;
     char stringcheck[5];
 
     for (int i = strlen(input); i >= 0 ; i--) {
