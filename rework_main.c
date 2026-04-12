@@ -101,7 +101,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         role = TAIL;
       }
     }
-    
+
     HAL_UART_Receive_IT(&huart1, xbuf, 1);
   }
   else if (state == IDLE && huart == &huart2)
@@ -219,7 +219,7 @@ void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
     {
       HAL_UART_Transmit(&huart1, &msg[i], 1, HAL_MAX_DELAY);
     }
-    HAL_Delay(1);
+    //HAL_Delay(1); -> test without
   }
   state = IDLE;
 }
@@ -377,6 +377,8 @@ int main(void)
       {
         transmit(ptr, byte_len, false);
       }
+
+      free(new_msg);
     }
 
     /* USER CODE END WHILE */
