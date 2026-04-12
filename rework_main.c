@@ -299,6 +299,8 @@ int main(void)
 
   while (1)
   {
+    //turn off LD3 in case its on from previously being interrupted from wrong checksums
+    HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
     if (state == TRANSMITTING)
     {
       // holding data for 250ms
@@ -306,15 +308,26 @@ int main(void)
       HAL_Delay(250);
       HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
-      
-
-      if (role == TAIL)
+      if (role == TAIL || looped)
       {
         //extract checksum from message
         uint8_t old_check = extract(msg);
-        char stringcheck[5];
-        sprintf(stringcheck, "%d", old_check)
-        ID = msg[msg_len - (1+strlen(stringcheck))] + 1;
+
+        //perform checksum and compare with old_checksum
+        uint8_t check = checksum(msg);
+        // if the checksums don't match turn on LD3 and then halt processes
+        if (old_check != check)
+        {
+          HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+          //infinite while loop should stop operation of STM
+          while (1)
+          {}
+        }
+      }
+
+      if (role == TAIL)
+      {
+        ID = msg[msg_len - 1] + 1;
       }
       int new_len = msg_len + 5;
       uint8_t *new_msg = (uint8_t *)malloc(new_len);
@@ -336,6 +349,8 @@ int main(void)
       new_msg[msg_len + 3] = '_';
       new_msg[msg_len + 4] = ID;
 
+      //do checksum on new message
+      uint8_t new_check = checksum(new_msg);
 
       ptr = new_msg;
       byte_len = new_len;
