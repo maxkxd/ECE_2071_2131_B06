@@ -217,6 +217,35 @@ void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
   state = IDLE;
 }
 
+uint8_t checksum (char str[]) {
+    uint8_t temp = str[0];
+    for (int i = 1; i < strlen(str); i++) {
+        temp = temp^str[i];
+    }
+    printf("%d\n", temp);
+    return temp;
+}
+
+uint8_t extract (uint8_t input[]) {
+
+    uint8_t check;
+    char stringcheck[5];
+
+    for (int i = strlen(input); i >= 0 ; i--) {
+            // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
+            if (strstr((char *)&input[i], "_") == (char *)&input[i]) {
+                strcpy(stringcheck, &input[i+2]);
+                check = atoi(&input[i+2]); 
+                printf("check in loop %d\n", check);
+                printf("stringcheck length: %ld\n", strlen(stringcheck));
+                for (int j = i+2; j < i+2+strlen(stringcheck); j++)
+                input[j] = input[j+strlen(stringcheck)];
+                break;
+            }
+        }
+        return check;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -278,6 +307,23 @@ int main(void)
       HAL_Delay(250);
       HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
+      if (role == TAIL || looped)
+      {
+        //extract checksum from message
+        uint8_t old_check = extract(msg);
+
+        //perform checksum and compare with old_checksum
+        uint8_t check = checksum(msg);
+        // if the checksums don't match turn on LD3 and then halt processes
+        if (old_check != check)
+        {
+          HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+          //infinite while loop should stop operation of STM
+          while (1)
+          {}
+        }
+      }
+
       if (role == TAIL)
       {
         ID = msg[msg_len - 1] + 1;
@@ -302,6 +348,9 @@ int main(void)
       new_msg[msg_len + 3] = '_';
       new_msg[msg_len + 4] = ID;
 
+      //do checksum on new message and append
+      uint8_t new_check = checksum(new_msg);
+      new_msg[msg_len + 5] = new_check;
 
       ptr = new_msg;
       byte_len = new_len;
