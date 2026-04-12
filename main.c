@@ -191,16 +191,16 @@ void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
   if (toComp)
   {
     HAL_UART_Transmit(&huart2, &return_char, 1, HAL_MAX_DELAY);
-    HAL_Delay(10);
+    HAL_Delay(1);
     HAL_UART_Transmit(&huart2, &msg_len, 1, HAL_MAX_DELAY);
-    HAL_Delay(10);
+    HAL_Delay(1);
   }
   else
   {
     HAL_UART_Transmit(&huart1, &return_char, 1, HAL_MAX_DELAY);
-    HAL_Delay(10);
+    HAL_Delay(1);
     HAL_UART_Transmit(&huart1, &msg_len, 1, HAL_MAX_DELAY);
-    HAL_Delay(10);
+    HAL_Delay(1);
   }
   for (int i = 0; i < msg_len; i++)
   {
@@ -212,7 +212,7 @@ void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
     {
       HAL_UART_Transmit(&huart1, &msg[i], 1, HAL_MAX_DELAY);
     }
-    HAL_Delay(100);
+    HAL_Delay(1);
   }
   state = IDLE;
 }
@@ -322,9 +322,6 @@ int main(void)
         transmit(ptr, byte_len, false);
       }
     }
-
-    // freeing unused data
-    free(new_msg);
 
     /* USER CODE END WHILE */
 
