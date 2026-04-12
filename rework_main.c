@@ -349,7 +349,7 @@ int main(void)
         new_msg[i] = msg[i];
       }
 
-      new_msg[msg_len + -1] = 'B';
+      new_msg[msg_len - 1] = 'B';
       new_msg[msg_len + 0] = '0';
       new_msg[msg_len + 1] = '6';
       new_msg[msg_len + 2] = '_';
