@@ -349,15 +349,15 @@ int main(void)
         new_msg[i] = msg[i];
       }
 
-      new_msg[msg_len] = 'B';
-      new_msg[msg_len + 1] = '0';
-      new_msg[msg_len + 2] = '6';
-      new_msg[msg_len + 3] = '_';
-      new_msg[msg_len + 4] = ID;
+      new_msg[msg_len + -1] = 'B';
+      new_msg[msg_len + 0] = '0';
+      new_msg[msg_len + 1] = '6';
+      new_msg[msg_len + 2] = '_';
+      new_msg[msg_len + 3] = ID;
 
       //do checksum on new message and append
       uint8_t new_check = checksum(new_msg);
-      new_msg[msg_len + 5] = new_check;
+      new_msg[msg_len + 4] = new_check;
 
       ptr = new_msg;
       byte_len = new_len;
