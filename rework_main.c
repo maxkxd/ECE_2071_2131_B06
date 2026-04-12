@@ -329,7 +329,7 @@ int main(void)
       {
         ID = msg[msg_len - 1] + 1;
       }
-      int new_len = msg_len + 5;
+      int new_len = msg_len + 6;
       uint8_t *new_msg = (uint8_t *)malloc(new_len);
 
       // if new_msg cannot allocate mem cancel the program
@@ -349,8 +349,9 @@ int main(void)
       new_msg[msg_len + 3] = '_';
       new_msg[msg_len + 4] = ID;
 
-      //do checksum on new message
+      //do checksum on new message and append
       uint8_t new_check = checksum(new_msg);
+      new_msg[msg_len + 5] = new_check;
 
       ptr = new_msg;
       byte_len = new_len;
