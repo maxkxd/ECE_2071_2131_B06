@@ -85,11 +85,12 @@ volatile State state = IDLE;
 volatile uint8_t *msg;
 volatile uint8_t ID = 0x30;
 
+static uint8_t msg_buffer[256];
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   static int current_len = 0;
 
-  // if idle and msg received is \r, set stm to wait for msg length (in bytes)
   if (state == IDLE && huart == &huart1)
   {
     if (xbuf[0] == 0x0D)
@@ -117,16 +118,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     HAL_UART_Receive_IT(&huart2, ybuf, 1);
   }
 
-  // if waiting for length, and ISR triggered from rx
   else if (state == WAIT_FOR_LEN && huart == &huart1)
   {
-    // if receiving from last stm
     if (role == HEAD && looped)
     {
       msg_len = xbuf[0];
 
-      // allocate memory for incoming msg
-      msg = (uint8_t *)malloc(msg_len);
+      if (msg_len > 256){
+    	  msg_len = 256;
+      }
+      msg = msg_buffer;
 
       state = RECEIVING;
 
@@ -135,53 +136,49 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     else if (role == TAIL)
     {
       msg_len = xbuf[0];
-      msg = (uint8_t *)malloc(msg_len);
+
+      if (msg_len > 256){
+    	  msg_len = 256;
+      }
+      msg = msg_buffer;
+
       state = RECEIVING;
 
       HAL_UART_Receive_IT(&huart1, xbuf, 1);
     }
   }
-  // if waiting for length, and ISR triggered from computer
-  else if (state == WAIT_FOR_LEN && huart == &huart2) // && role == HEAD is implicit if data is received from huart2
+  else if (state == WAIT_FOR_LEN && huart == &huart2)
   {
     msg_len = ybuf[0];
-    msg = (uint8_t *)malloc(msg_len);
+
+    if (msg_len > 256){
+    	msg_len = 256;
+    }
+    msg = msg_buffer;
+
     state = RECEIVING;
 
     HAL_UART_Receive_IT(&huart2, ybuf, 1);
   }
 
-  // if receiving data through rx
   else if (state == RECEIVING && huart == &huart1)
   {
-    // NOTE: Wouldn't the previous if statements be redundant since
-    // any signal through the huart1 will be when it has looped or if its a tail
     current_len++;
     msg[current_len - 1] = xbuf[0];
+
     if (current_len >= msg_len)
     {
       state = TRANSMITTING;
     }
 
     HAL_UART_Receive_IT(&huart1, xbuf, 1);
-
-    // if (role == TAIL || (role == HEAD && looped))
-    // {
-    //   HAL_UART_Receive_IT(&huart1, xbuf, 1);
-    //   current_len++;
-    //   msg[current_len - 1] = xbuf[0];
-    //   if (current_len >= msg_len)
-    //   {
-    //     state = TRANSMITTING;
-    //   }
-    // }
   }
 
-  // if receiving init
-  else if (state == RECEIVING && huart == &huart2) //  && role == HEAD && !looped is implicit if data is received from huart2
+  else if (state == RECEIVING && huart == &huart2)
   {
     current_len++;
     msg[current_len - 1] = ybuf[0];
+
     if (current_len >= msg_len)
     {
       state = TRANSMITTING;
@@ -219,32 +216,30 @@ void transmit(uint8_t *msg, uint8_t msg_len, bool toComp)
     {
       HAL_UART_Transmit(&huart1, &msg[i], 1, HAL_MAX_DELAY);
     }
-    //HAL_Delay(1); -> test without
+    HAL_Delay(1);
   }
   state = IDLE;
 }
 
-uint8_t checksum (char str[]) {
+uint8_t checksum (uint8_t str[], int msg_len) {
     uint8_t temp = str[0];
-    for (int i = 1; i < strlen(str); i++) {
+    for (int i = 1; i < msg_len; i++) {
         temp = temp^str[i];
     }
-    printf("%d\n", temp);
     return temp;
 }
-
+/*
 uint8_t extract (uint8_t input[]) {
 
     uint8_t check;
     char stringcheck[5];
 
+
     for (int i = strlen(input); i >= 0 ; i--) {
             // if statement clause idea, takes elements from this video: https://www.youtube.com/watch?v=p6uqGop26es&t=327s
             if (strstr((char *)&input[i], "_") == (char *)&input[i]) {
                 strcpy(stringcheck, &input[i+2]);
-                check = atoi(&input[i+2]); 
-                printf("check in loop %d\n", check);
-                printf("stringcheck length: %ld\n", strlen(stringcheck));
+                check = atoi(&input[i+2]);
                 for (int j = i+2; j < i+2+strlen(stringcheck); j++)
                 input[j] = input[j+strlen(stringcheck)];
                 break;
@@ -252,6 +247,7 @@ uint8_t extract (uint8_t input[]) {
         }
         return check;
 }
+*/
 
 /* USER CODE END 0 */
 
@@ -317,47 +313,98 @@ int main(void)
       if (role == TAIL || looped)
       {
         //extract checksum from message
-        uint8_t old_check = extract(msg);
+        uint8_t old_check = msg[msg_len - 1];
 
         //perform checksum and compare with old_checksum
-        uint8_t check = checksum(msg);
+        uint8_t check = checksum(msg, msg_len - 1);
         // if the checksums don't match turn on LD3 and then halt processes
         if (old_check != check)
         {
           HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-          //infinite while loop should stop operation of STM
-          while (1)
-          {}
+          while(1){
+        	  HAL_Delay(1000);
+          }
         }
       }
 
       if (role == TAIL)
       {
-        ID = msg[msg_len - 1] + 1;
-      }
-      int new_len = msg_len + 5;
-      uint8_t *new_msg = (uint8_t *)malloc(new_len);
-
-      // if new_msg cannot allocate mem cancel the program
-      if (new_msg == NULL)
-      {
-        return 1;
+        ID = msg[msg_len - 2] + 1;
       }
 
-      for (int i = 0; i < msg_len; i++)
-      {
-        new_msg[i] = msg[i];
+
+      int new_len;
+      uint8_t* new_msg;
+      if (looped == false){
+    	  if (role == HEAD){
+              new_len = msg_len + 6;
+              new_msg = calloc(new_len, 1);
+
+              // if new_msg cannot allocate mem cancel the program
+              if (new_msg == NULL)
+              {
+                return 1;
+              }
+
+              for (int i = 0; i < msg_len; i++)
+              {
+                new_msg[i] = msg[i];
+              }
+
+              new_msg[msg_len] = 'B';
+              new_msg[msg_len + 1] = '0';
+              new_msg[msg_len + 2] = '6';
+              new_msg[msg_len + 3] = '_';
+              new_msg[msg_len + 4] = ID;
+
+              //do checksum on new message and append
+              uint8_t new_check = checksum(new_msg, new_len - 1);
+              new_msg[msg_len + 5] = new_check;
+    	  } else {
+              new_len = msg_len + 5;
+              new_msg = calloc(new_len, 1);
+
+              // if new_msg cannot allocate mem cancel the program
+              if (new_msg == NULL)
+              {
+                return 1;
+              }
+
+              for (int i = 0; i < msg_len - 1; i++)
+              {
+                new_msg[i] = msg[i];
+              }
+
+              new_msg[msg_len - 1] = 'B';
+              new_msg[msg_len + 0] = '0';
+              new_msg[msg_len + 1] = '6';
+              new_msg[msg_len + 2] = '_';
+              new_msg[msg_len + 3] = ID;
+
+              //do checksum on new message and append
+              uint8_t new_check = checksum(new_msg, new_len - 1);
+              new_msg[msg_len + 4] = new_check;
+    	  }
+
+      } else {
+    	  new_len = msg_len;
+    	  new_msg = calloc(new_len, 1);
+
+			// if new_msg cannot allocate mem cancel the program
+			if (new_msg == NULL)
+			{
+			  return 1;
+			}
+
+			for (int i = 0; i < msg_len - 1; i++)
+			{
+			  new_msg[i] = msg[i];
+			}
+
+			//do checksum on new message and append
+			uint8_t new_check = checksum(new_msg, new_len - 1);
+			new_msg[msg_len - 1] = new_check;
       }
-
-      new_msg[msg_len] = 'B';
-      new_msg[msg_len + 1] = '0';
-      new_msg[msg_len + 2] = '6';
-      new_msg[msg_len + 3] = '_';
-      new_msg[msg_len + 4] = ID;
-
-      //do checksum on new message and append
-      uint8_t new_check = checksum(new_msg);
-      new_msg[msg_len + 5] = new_check;
 
       ptr = new_msg;
       byte_len = new_len;
