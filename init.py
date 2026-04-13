@@ -96,7 +96,7 @@ def UART2_read(ser, byteCount):
         string: the decoded returned data
     """
     data = b''
-    for i in range(byteCount + 27):
+    for i in range(byteCount + 23):
         data += ser.read(1)
     return data.decode("utf-8")
 
